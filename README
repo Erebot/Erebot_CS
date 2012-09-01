@@ -1,0 +1,10 @@
+To (re)build the parser (Parser.php):
+- Make sure PHP_ParserGenerator is installed on your machine
+  (if not, you can install it using the PEAR installer)
+- Use this command:
+    PHP_PEAR_PHP_BIN="php -d xdebug.max_nesting_level=200 -d memory_limit=512M" \
+    PHP_PEAR_INSTALL_DIR=`pear config-get php_dir` \
+    phplemon -q -s Parser.y
+
+The 512 MB limit and the max_nesting_level limit are due to the way
+PHP_ParserGenerator works (it partly generates the parser recursively).
