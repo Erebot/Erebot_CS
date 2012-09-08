@@ -93,64 +93,50 @@ class Erebot_CodingStandard_Lexer
 
         foreach ($tokens as $token) {
             if (is_array($token)) {
-                $values = $token[1];
-                $token  = $token[0];
+                $value = $token[1];
+                $token = $token[0];
             }
             else {
-                $values = $token;
+                $value = $token;
             }
 
-            if ($token == T_WHITESPACE) {
-                $values = array_filter( 
-                    preg_split(
-                        '/([ \\t]|\\r\\n?|\\n)/',
-                        $values, -1, PREG_SPLIT_DELIM_CAPTURE
-                    )
-                );
+            // Line/column for the current token.
+            $currentLine    = $this->_line;
+            $currentColumn  = $this->_column;
+
+            /* Update $this->_line/_column with the position
+             * of the next token. Must be done before doParse()
+             * is called in case a rule calls getPosition(). */
+            $this->_line   += (int) preg_match_all(
+                                        '/\\r\\n?|\\n/',
+                                        $value, $m
+                                    );
+            $lastCR         = strrpos($value, "\r");
+            $lastLF         = strrpos($value, "\n");
+            if ($lastCR !== FALSE || $lastLF !== FALSE) {
+                $first = max((int) $lastCR, (int) $lastLF);
+                $this->_column  = strlen((string) substr($value, $first));
             }
             else {
-                $values = array($values);
+                $this->_column += strlen($value);
             }
 
-            foreach ($values as $value) {
-                // Line/column for the current token.
-                $currentLine    = $this->_line;
-                $currentColumn  = $this->_column;
-
-                /* Update $this->_line/_column with the position
-                 * of the next token. Must be done before doParse()
-                 * is called in case a rule calls getPosition(). */
-                $this->_line   += (int) preg_match_all(
-                                            '/\\r\\n?|\\n/',
-                                            $value, $m
-                                        );
-                $lastCR         = strrpos($value, "\r");
-                $lastLF         = strrpos($value, "\n");
-                if ($lastCR !== FALSE || $lastLF !== FALSE) {
-                    $first = max((int) $lastCR, (int) $lastLF);
-                    $this->_column  = strlen((string) substr($value, $first));
-                }
-                else {
-                    $this->_column += strlen($value);
-                }
-
-                if (!isset($this->_tokmap[$token])) {
-                    $name = token_name($token);
-                    echo "Unknown token ($token / $name) at " .
-                         "$currentLine:$currentColumn " .
-                         "with value: '$value'\n";
-                    continue;
-                }
-
-                $this->_parser->doParse(
-                    $this->_tokmap[$token],
-                    new Erebot_CodingStandard_Value(
-                        $currentLine,
-                        $currentColumn,
-                        $value
-                    )
-                );
+            if (!isset($this->_tokmap[$token])) {
+                $name = token_name($token);
+                echo "Unknown token ($token / $name) at " .
+                     "$currentLine:$currentColumn " .
+                     "with value: '$value'\n";
+                continue;
             }
+
+            $this->_parser->doParse(
+                $this->_tokmap[$token],
+                new Erebot_CodingStandard_Value(
+                    $currentLine,
+                    $currentColumn,
+                    $value
+                )
+            );
         }
 
         // Send EOF signal.

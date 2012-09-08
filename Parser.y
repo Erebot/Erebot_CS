@@ -1,6 +1,6 @@
 %name Erebot_CodingStandard_Parser_
 %declare_class {class Erebot_CodingStandard_Parser}
-//%token_type {Erebot_CodingStandard_Value}
+%token_type {Erebot_CodingStandard_Value}
 %syntax_error {
         $stack = array();
         foreach ($this->yystack as $entry) {
@@ -57,12 +57,12 @@
             $this->_problems[] = array($level, $blocks, $msg, $anchor);
         }
 
-        protected function _addError($blocks, $msg, $anchor = NULL)
+        protected function addError($blocks, $msg, $anchor = NULL)
         {
             $this->_addProblem("ERROR", $blocks, $msg, $anchor);
         }
 
-        protected function _addWarning($blocks, $msg, $anchor = NULL)
+        protected function addWarning($blocks, $msg, $anchor = NULL)
         {
             $this->_addProblem("WARNING", $blocks, $msg, $anchor);
         }
@@ -81,7 +81,7 @@
             );
         }
 
-        protected function _validClassVarName($varName, $isMethod)
+        protected function _validClassObjName($varName, $isMethod)
         {
             $validChars =   "ABCDEFGHIJKLMNOPQRSTUVWXYZ" .
                             "abcdefghijklmnopqrstuvwxyz" .
@@ -101,7 +101,7 @@
             $name = ltrim($name, '_');
             if ($name == '' || strpos($validFirst, $name[0]) === FALSE ||
                 strspn($name, $validChars) != strlen($name)) {
-                $this->_addError(
+                $this->addError(
                     $varName,
                     "Variable name does not match _*[a-z][A-Za-z0-9_]*",
                     "#class-methods-and-properties"
@@ -117,7 +117,7 @@
             $name       =   $constName->getValue();
             if (strpos($validFirst, $name[0]) === FALSE ||
                 strspn($name, $validChars) != strlen($name)) {
-                $this->_addError(
+                $this->addError(
                     $constName,
                     "Constant name does not match [A-Z][A-Z0-9_]*",
                     "#constants"
@@ -169,15 +169,15 @@ file_statements ::= file_statements T_INLINE_HTML(tok). {
         return;             // @TODO: check shebang syntax
     }
 
-    $this->_addError(
+    $this->addError(
         tok,
         "DO NOT mix PHP code with non-PHP content in the same file",
         "#php-code-tags"    // @TODO
     );
 }
 
-php_script ::= php_open_tag whitespace top_statement_list T_CLOSE_TAG(tok). {
-    $this->_addError(
+php_script ::= php_open_tag top_statement_list T_CLOSE_TAG(tok). {
+    $this->addError(
         tok,
         "Omit the closing '?>' at the end of the file",
         "#php-code-tags"
@@ -189,21 +189,21 @@ php_open_tag ::= T_OPEN_TAG(tok). {
         return;
     }
 
-    $this->_addError(
+    $this->addError(
         tok,
         "Always use '<?php' to start a new block of PHP code",
         "#php-code-tags"
     );
 }
 php_open_tag ::= T_OPEN_TAG_WITH_ECHO(tok). {
-    $this->_addError(
+    $this->addError(
         tok,
         "Use only '<?php' to start a new block of PHP code",
         "#php-code-tags"    // @TODO
     );
 }
 
-top_statement_list ::= top_statement_list  top_statement.
+top_statement_list ::= top_statement_list top_statement.
 top_statement_list ::= .
 
 top_statement ::= statement.
@@ -224,7 +224,7 @@ statement ::= unticked_statement.
 unticked_statement ::= T_REAL_CURLY_OPEN inner_statement_list T_REAL_CURLY_CLOSE.
 unticked_statement ::= T_IF T_PAR_OPEN expr T_PAR_CLOSE statement elseif_list else_single.
 unticked_statement ::= T_PAR_OPEN expr T_PAR_CLOSE T_COLON(startTok) inner_statement_list new_elseif_list new_else_single T_ENDIF(endTok) T_SEMI_COLON. {
-    $this->_addError(
+    $this->addError(
         array(startTok, endTok),
         "Don't use the alternate syntax for control structures",
         "#control-structures"
@@ -242,7 +242,7 @@ unticked_statement ::= T_RETURN T_SEMI_COLON.
 unticked_statement ::= T_RETURN expr_without_variable T_SEMI_COLON.
 unticked_statement ::= T_RETURN variable T_SEMI_COLON.
 unticked_statement ::= T_GLOBAL(globalTok) global_var_list T_SEMI_COLON. {
-    $this->_addError(
+    $this->addError(
         globalTok,
         "Use of global variables is strictly prohibited",
         "#global-variables"
@@ -281,7 +281,7 @@ is_reference ::= .
 is_reference ::= T_AMPERSAND.
 
 unticked_function_declaration_statement ::= T_FUNCTION(startTok) is_reference T_STRING(funcName) T_PAR_OPEN parameter_list T_PAR_CLOSE T_REAL_CURLY_OPEN inner_statement_list T_REAL_CURLY_CLOSE(endTok). {
-    $this->_addWarning(
+    $this->addWarning(
         array(startTok, endTok),
         "Avoid functions and prefer static methods of a class",
         "#function-method-declarations"
@@ -292,7 +292,7 @@ unticked_function_declaration_statement ::= T_FUNCTION(startTok) is_reference T_
     $name       = funcName->getValue();
     if (strpos($validFirst, $name[0]) === FALSE ||
         strspn($name, $validChars) != strlen($name)) {
-        $this->_addError(
+        $this->addError(
             funcName,
             "Function name does not match [a-z][a-z_0-9]*",
             "#functions"
@@ -310,7 +310,7 @@ unticked_class_declaration_statement ::= class_entry_type T_STRING(classDef) ext
 
     if (!$len || strspn($name, $validChars) != $len ||
         strpos($validFirst, $name[0]) === FALSE) {
-        $this->_addError(
+        $this->addError(
             classDef,
             "Class name does not match [A-Z][A-Za-z_0-9]*",
             "#classes-and-interfaces"
@@ -326,7 +326,7 @@ unticked_class_declaration_statement ::= class_entry_type T_STRING(classDef) ext
     $revSuffix  = strrev($suffix);
     $revFile    = strrev($this->_lexer->getFile());
     if (strncmp($revFile, $revSuffix, strlen($revSuffix))) {
-        $this->_addError(
+        $this->addError(
             classDef,
             "The class named '" . $name . "' should be placed in a file " .
             "named ..." . $suffix,
@@ -342,7 +342,7 @@ unticked_class_declaration_statement ::= class_entry_type T_STRING(classDef) ext
             foreach (methodList as $method) {
                 $methName = $this->_normalizeIdentifier($method->getValue());
                 if ($methName == $ctorName) {
-                    $this->_addError(
+                    $this->addError(
                         method,
                         "The constructor should be __construct(), '.
                         'not " . $ctor->name . "()",
@@ -354,7 +354,7 @@ unticked_class_declaration_statement ::= class_entry_type T_STRING(classDef) ext
         }
     }
     else {
-        $this->_addWarning(
+        $this->addWarning(
             classDef,
             "Consider adding a __construct() method to the class " .
             "so that subclasses may call their parent's constructor " .
@@ -373,7 +373,7 @@ unticked_class_declaration_statement ::= interface_entry T_STRING(ifaceDef) inte
 
     if (!$len || strspn($name, $validChars) != $len ||
         strpos($validFirst, $name[0]) === FALSE) {
-        $this->_addError(
+        $this->addError(
             ifaceDef,
             "Interface name does not match [A-Z][A-Za-z_0-9]*",
             "#classes-and-interfaces"
@@ -389,7 +389,7 @@ unticked_class_declaration_statement ::= interface_entry T_STRING(ifaceDef) inte
     $revSuffix  = strrev($suffix);
     $revFile    = strrev($this->_lexer->getFile());
     if (strncmp($revFile, $revSuffix, strlen($revSuffix))) {
-        $this->_addError(
+        $this->addError(
             ifaceDef,
             "The interface named '" . $name . "' belongs to a file " .
             "named ..." . $suffix,
@@ -398,7 +398,7 @@ unticked_class_declaration_statement ::= interface_entry T_STRING(ifaceDef) inte
     }
 
     if (strpos($name, "Interface") === FALSE) {
-        $this->_addError(
+        $this->addError(
             ifaceDef,
             "The text 'Interface' should be part of an interface's name",
             "#classes-and-interfaces"
@@ -432,7 +432,7 @@ foreach_variable ::= T_AMPERSAND variable.
 
 for_statement ::= statement.
 for_statement ::= T_COLON(startTok) inner_statement_list T_ENDFOR(endTok) T_SEMI_COLON. {
-    $this->_addError(
+    $this->addError(
         array(startTok, endTok),
         "Don't use the alternate syntax for control structures",
         "#control-structures"
@@ -441,7 +441,7 @@ for_statement ::= T_COLON(startTok) inner_statement_list T_ENDFOR(endTok) T_SEMI
 
 foreach_statement ::= statement.
 foreach_statement ::= T_COLON(startTok) inner_statement_list T_ENDFOREACH(endTok) T_SEMI_COLON. {
-    $this->_addError(
+    $this->addError(
         array(startTok, endTok),
         "Don't use the alternate syntax for control structures",
         "#control-structures"
@@ -450,7 +450,7 @@ foreach_statement ::= T_COLON(startTok) inner_statement_list T_ENDFOREACH(endTok
 
 declare_statement ::= statement.
 declare_statement ::= T_COLON(startTok) inner_statement_list T_ENDDECLARE(endTok) T_SEMI_COLON. {
-    $this->_addError(
+    $this->addError(
         array(startTok, endTok),
         "Don't use the alternate syntax for control structures",
         "#control-structures"
@@ -463,14 +463,14 @@ declare_list ::= declare_list T_COMMA T_STRING T_EQUAL static_scalar.
 switch_case_list ::= T_REAL_CURLY_OPEN case_list T_REAL_CURLY_CLOSE.
 switch_case_list ::= T_REAL_CURLY_OPEN T_SEMI_COLON case_list T_REAL_CURLY_CLOSE.
 switch_case_list ::= T_COLON(startTok) case_list T_ENDSWITCH(endTok) T_SEMI_COLON. {
-    $this->_addError(
+    $this->addError(
         array(startTok, endTok),
         "Don't use the alternate syntax for control structures",
         "#control-structures"
     );
 }
 switch_case_list ::= T_COLON(startTok) T_SEMI_COLON case_list T_ENDSWITCH(endTok) T_SEMI_COLON. {
-    $this->_addError(
+    $this->addError(
         array(startTok, endTok),
         "Don't use the alternate syntax for control structures",
         "#control-structures"
@@ -489,7 +489,7 @@ while_statement ::= T_COLON inner_statement_list T_ENDWHILE T_SEMI_COLON.
 
 elseif_list ::= .
 elseif_list ::= elseif_list T_ELSEIF(elseifTok) T_PAR_OPEN expr T_PAR_CLOSE statement. {
-    $this->_addError(
+    $this->addError(
         elseifTok,
         "Use 'else if' instead of 'elseif'",
         "#control-structures"
@@ -498,7 +498,7 @@ elseif_list ::= elseif_list T_ELSEIF(elseifTok) T_PAR_OPEN expr T_PAR_CLOSE stat
 
 new_elseif_list ::= .
 new_elseif_list ::= new_elseif_list T_ELSEIF(elseifTok) T_PAR_OPEN expr T_PAR_CLOSE T_COLON inner_statement_list. {
-    $this->_addError(
+    $this->addError(
         elseifTok,
         "Use 'else if' instead of 'elseif'",
         "#control-structures"
@@ -517,11 +517,11 @@ parameter_list ::= .
 non_empty_parameter_list ::= optional_class_type T_VARIABLE.
 non_empty_parameter_list ::= optional_class_type T_AMPERSAND T_VARIABLE.
 non_empty_parameter_list ::= optional_class_type T_AMPERSAND T_VARIABLE T_EQUAL static_scalar.
-non_empty_parameter_list ::= optional_class_type T_VARIABLE T_EQUAL static_scalar.
+non_empty_parameter_list ::= optional_class_type T_VARIABLE  T_EQUAL static_scalar.
 non_empty_parameter_list ::= non_empty_parameter_list T_COMMA optional_class_type T_VARIABLE.
 non_empty_parameter_list ::= non_empty_parameter_list T_COMMA optional_class_type T_AMPERSAND T_VARIABLE.
 non_empty_parameter_list ::= non_empty_parameter_list T_COMMA optional_class_type T_AMPERSAND T_VARIABLE T_EQUAL static_scalar.
-non_empty_parameter_list ::= non_empty_parameter_list T_COMMA optional_class_type T_VARIABLE T_EQUAL static_scalar.
+non_empty_parameter_list ::= non_empty_parameter_list T_COMMA optional_class_type T_VARIABLE  T_EQUAL static_scalar.
 
 optional_class_type ::= .
 optional_class_type ::= T_STRING(typehint). {
@@ -540,7 +540,7 @@ optional_class_type ::= T_STRING(typehint). {
     );
 
     if ($classes[$normalized] != $name) {
-        $this->_addWarning(
+        $this->addWarning(
             typehint,
             "The proper case for '" . $name .
             "' is '" . $classes[$normalized] . "'",
@@ -553,13 +553,13 @@ optional_class_type ::= T_STRING(typehint). {
     }
 
     if (!class_exists($name, TRUE)) {
-        $this->_addError(typehint, "No such class/interface: '" . $name . "'");
+        $this->addError(typehint, "No such class/interface: '" . $name . "'");
         return;
     }
 
     $reflector = new ReflectionClass($name);
     if ($reflector->isInternal()) {
-        $this->_addWarning(
+        $this->addWarning(
             typehint,
             "Consider writing an interface instead of using '" .
             $name . "' as a typehint directly",
@@ -569,7 +569,7 @@ optional_class_type ::= T_STRING(typehint). {
     }
 
     if (!$reflector->isAbstract()) {
-        $this->_addError(
+        $this->addError(
             typehint,
             "Use interfaces in typehints instead of concrete classes",
             "#function-method-declarations"
@@ -611,178 +611,222 @@ class_statement_list(res) ::= . {
     res = array();
 }
 
-class_statement(res) ::= variable_modifiers(mods) class_variable_declaration(vars) T_SEMI_COLON. {
-    res = NULL;
+class_statement(res) ::= non_empty_member_modifiers(mods) class_var_or_method(varOrMeth). {
+    res = varOrMeth[0] ? varOrMeth[1] : NULL;
+
     $modifiers = array();
     foreach (mods as $mod) {
         $modifiers[] = $this->_normalizeIdentifier($mod->getValue());
     }
 
     // The visibility modifier must be the last modifier.
-    $ppp = array("PUBLIC", "PROTECTED", "PRIVATE");
+    $ppp = array('PUBLIC', 'PROTECTED', 'PRIVATE');
     if (!in_array(end($modifiers), $ppp)) {
-        $this->_addError(
+        $this->addError(
             $lastMod,
             "The visibility modifier (public/protected/private) " .
             "MUST be the last modifier",
             "#class-methods-and-properties"
         );
     }
+    if (!count(array_intersect($modifiers, $ppp))) {
+        $this->addError(
+            end(mods),
+            "The visibility MUST be explicitely stated",
+            "#class-methods-and-properties"
+        );
+        $modifiers[] = 'PUBLIC';
+    }
+
+    if (varOrMeth[0] === TRUE) {
+        $name = $this->_normalizeIdentifier(varOrMeth[1]->getValue());
+
+        // Method name must start with a leading "_"
+        // if the method is protected or private.
+        if (!in_array('PUBLIC', $modifiers)) {
+            if ($name[0] != '_') {
+                $this->addError(
+                    varOrMeth[1],
+                    "Protected/private methods MUST be prefixed with an underscore",
+                    "#class-methods-and-properties"
+                );
+            }
+        }
+        else if ($name[0] == '_') {
+            // Whitelist magic methods and methods that must be exposed
+            // with a special name to external tools (eg. xgettext).
+            // Also, flag methods that cause compatibility issues with PHP 5.2.x.
+            $whitelist  = array(
+                '_'             => FALSE,   // Used by xgettext.
+                '__CONSTRUCT'   => FALSE,   // Constructor.
+                '__DESTRUCT'    => FALSE,   // Destructor.
+                '__CALL'        => FALSE,   // Magical (non-static) method call.
+                '__CALLSTATIC'  => TRUE,    // Magical static method call (5.3.0+).
+                '__GET'         => FALSE,   // Magical member getter.
+                '__SET'         => FALSE,   // Magical member setter.
+                '__ISSET'       => FALSE,   // Magical member existence test.
+                '__UNSET'       => FALSE,   // Magical member unsetter.
+                '__SLEEP'       => TRUE,    // Serialization (obsolete).
+                '__WAKEUP'      => TRUE,    // Unserialization (obsolete).
+                '__TOSTRING'    => FALSE,   // (Automatic) conversion to string.
+                '__INVOKE'      => TRUE,    // Object invokation (5.3.0+).
+                '__SET_STATE'   => FALSE,   // Hook for var_export().
+                '__CLONE'       => FALSE,   // Cloning.
+            );
+
+            if (!isset($whitelist[$name])) {
+                $this->addError(
+                    varOrMeth[1],
+                    "Public methods MUST NOT be prefixed with an underscore, " .
+                    "except for 'magic methods' (eg. __toString())",
+                    "#class-methods-and-properties"
+                );
+            }
+            else if ($whitelist[$name]) {
+                $this->addError(
+                    varOrMeth[1],
+                    "This magic method may not work across all PHP versions " .
+                    "or is considered obsolete",
+                    "#class-methods-and-properties" // @TODO
+                );
+            }
+        }
+    }
+
+    else {
+        foreach (varOrMeth[1] as $var) {
+            $name = ltrim($var->getValue(), '$');
+
+            if (in_array('PUBLIC', $modifiers)) {
+                if ($name[0] == '_') {
+                    $this->addError(
+                        $var,
+                        "Public members MUST NOT be prefixed with an underscore",
+                        "#class-methods-and-properties"
+                    );
+                }
+                $this->addWarning(
+                    $var,
+                    "Avoid public members (they tend to expose too much " .
+                    "of what may be considered implementation details)",
+                    "#class-methods-and-properties"
+                );
+            }
+
+            else {
+                if ($name[0] != '_') {
+                    $this->addError(
+                        $var,
+                        "Protected/private members MUST be prefixed " .
+                        "with an underscore",
+                        "#class-methods-and-properties"
+                    );
+                }
+                if (in_array("PRIVATE", $modifiers)) {
+                    $this->addWarning(
+                        $var,
+                        "Avoid private members (they are a PITA to test)",
+                        "#class-methods-and-properties"
+                    );
+                }
+            }
+        }
+    }
+}
+class_statement(res) ::= T_VAR(varTok) class_variable_declaration(vars) T_SEMI_COLON. {
+    res = NULL;
+
+    $this->addError(
+        varTok,
+        "The old PHP 4 'var' keyword MUST NOT be used",
+        "#class-methods-and-properties"
+    );
 
     foreach (vars as $var) {
         $name = ltrim($var->getValue(), '$');
 
-        if (in_array("PUBLIC", $modifiers)) {
-            if ($name[0] == '_') {
-                $this->_addError(
-                    $var,
-                    "Public members MUST NOT be prefixed with an underscore",
-                    "#class-methods-and-properties"
-                );
-            }
-            $this->_addWarning(
+        if ($name[0] == '_') {
+            $this->addError(
                 $var,
-                "Avoid public members (they tend to expose too much " .
-                "of what may be considered implementation details)",
+                "Public members MUST NOT be prefixed with an underscore",
                 "#class-methods-and-properties"
             );
         }
+        $this->addWarning(
+            $var,
+            "Avoid public members (they tend to expose too much " .
+            "of what may be considered implementation details)",
+            "#class-methods-and-properties"
+        );
+    }
+}
+class_statement(res) ::= method_declaration(methDecl). {
+    res = methDecl;
+    $fakeToken = $this->_lexer->getPosition();
+    $this->addError(
+        methDecl,
+        "The visibility MUST be explicitely stated",
+        "#class-methods-and-properties"
+    );
 
-        else {
-            if ($name[0] != '_') {
-                $this->_addError(
-                    $var,
-                    "Protected/private members MUST be prefixed " .
-                    "with an underscore",
-                    "#class-methods-and-properties"
-                );
-            }
-            if (in_array("PRIVATE", $modifiers)) {
-                $this->_addWarning(
-                    $var,
-                    "Avoid private members (they are a PITA to test)",
-                    "#class-methods-and-properties"
-                );
-            }
-        }
+    // Whitelist magic methods and methods that must be exposed
+    // with a special name to external tools (eg. xgettext).
+    // Also, flag methods that cause compatibility issues with PHP 5.2.x.
+    $whitelist  = array(
+        '_'             => FALSE,   // Used by xgettext.
+        '__CONSTRUCT'   => FALSE,   // Constructor.
+        '__DESTRUCT'    => FALSE,   // Destructor.
+        '__CALL'        => FALSE,   // Magical (non-static) method call.
+        '__CALLSTATIC'  => TRUE,    // Magical static method call (5.3.0+).
+        '__GET'         => FALSE,   // Magical member getter.
+        '__SET'         => FALSE,   // Magical member setter.
+        '__ISSET'       => FALSE,   // Magical member existence test.
+        '__UNSET'       => FALSE,   // Magical member unsetter.
+        '__SLEEP'       => TRUE,    // Serialization (obsolete).
+        '__WAKEUP'      => TRUE,    // Unserialization (obsolete).
+        '__TOSTRING'    => FALSE,   // (Automatic) conversion to string.
+        '__INVOKE'      => TRUE,    // Object invokation (5.3.0+).
+        '__SET_STATE'   => FALSE,   // Hook for var_export().
+        '__CLONE'       => FALSE,   // Cloning.
+    );
+
+    $name = $this->_normalizeIdentifier(methDecl->getValue());
+    if (!isset($whitelist[$name])) {
+        $this->addError(
+            methDecl,
+            "Public methods MUST NOT be prefixed with an underscore, " .
+            "except for 'magic methods' (eg. __toString())",
+            "#class-methods-and-properties"
+        );
+    }
+    else if ($whitelist[$name]) {
+        $this->addError(
+            methDecl,
+            "This magic method may not work across all PHP versions " .
+            "or is considered obsolete",
+            "#class-methods-and-properties" // @TODO
+        );
     }
 }
 class_statement(res) ::= class_constant_declaration T_SEMI_COLON. {
     res = NULL;
 }
-class_statement(res) ::= method_modifiers(mods) T_FUNCTION is_reference T_STRING(funcName) T_PAR_OPEN parameter_list T_PAR_CLOSE method_body. {
+
+class_var_or_method(res) ::= class_variable_declaration(vars) T_SEMI_COLON. {
+    res = array(FALSE, vars);
+}
+class_var_or_method(res) ::= method_declaration(methDecl). {
+    res = array(TRUE, methDecl);
+}
+
+method_declaration(res) ::= T_FUNCTION is_reference T_STRING(funcName) T_PAR_OPEN parameter_list T_PAR_CLOSE method_body. {
     res = funcName;
-    $this->_validClassVarName(funcName, TRUE);
-    $name = $this->_normalizeIdentifier(funcName->getValue());
-    $isPublic = FALSE;
-    foreach (mods as $mod) {
-        if ($this->_normalizeIdentifier($mod->getValue()) == "PUBLIC") {
-            $isPublic = TRUE;
-            break;
-        }
-    }
-
-    // The visibility modifier must be the last modifier.
-    $ppp        = array("PUBLIC", "PROTECTED", "PRIVATE");
-    $lastMod    = $this->_normalizeIdentifier(end(mods)->getValue());
-    if (!in_array($lastMod, $ppp)) {
-        $this->_addError(
-            $lastMod,
-            "The visibility modifier (public/protected/private) " .
-            "MUST be the last modifier",
-            "#class-methods-and-properties"
-        );
-    }
-
-    // Method name must start with a leading "_"
-    // if the method is protected or private.
-    if (!$isPublic) {
-        if ($name[0] != '_') {
-            $this->_addError(
-                funcName,
-                "Protected/private methods MUST be prefixed with an underscore",
-                "#class-methods-and-properties"
-            );
-        }
-    }
-    else if ($name[0] == '_') {
-        // Whitelist magic methods and methods that must be exposed
-        // with a special name to external tools (eg. xgettext).
-        // Also, flag methods that cause compatibility issues with PHP 5.2.x.
-        $whitelist  = array(
-            '_'             => FALSE,   // Used by xgettext.
-            '__CONSTRUCT'   => FALSE,   // Constructor.
-            '__DESTRUCT'    => FALSE,   // Destructor.
-            '__CALL'        => FALSE,   // Magical (non-static) method call.
-            '__CALLSTATIC'  => TRUE,    // Magical static method call (5.3.0+).
-            '__GET'         => FALSE,   // Magical member getter.
-            '__SET'         => FALSE,   // Magical member setter.
-            '__ISSET'       => FALSE,   // Magical member existence test.
-            '__UNSET'       => FALSE,   // Magical member unsetter.
-            '__SLEEP'       => TRUE,    // Serialization (obsolete).
-            '__WAKEUP'      => TRUE,    // Unserialization (obsolete).
-            '__TOSTRING'    => FALSE,   // (Automatic) conversion to string.
-            '__INVOKE'      => TRUE,    // Object invokation (5.3.0+).
-            '__SET_STATE'   => FALSE,   // Hook for var_export().
-            '__CLONE'       => FALSE,   // Cloning.
-        );
-
-        if (!isset($whitelist[$name])) {
-            $this->_addError(
-                funcName,
-                "Public methods MUST NOT be prefixed with an underscore, " .
-                "except for 'magic methods' (eg. __toString())",
-                "#class-methods-and-properties"
-            );
-        }
-        else if ($whitelist[$name]) {
-            $this->_addError(
-                funcName,
-                "This magic method may not work across all PHP versions " .
-                "or is considered obsolete",
-                "#class-methods-and-properties" // @TODO
-            );
-        }
-    }
+    $this->_validClassObjName(funcName, TRUE);
+    return;
 }
 
 method_body ::= T_SEMI_COLON.
 method_body ::= T_REAL_CURLY_OPEN inner_statement_list T_REAL_CURLY_CLOSE.
-
-variable_modifiers(res) ::= non_empty_member_modifiers(mods). {
-    res = mods;
-}
-variable_modifiers(res) ::= T_VAR(varTok). {
-    $this->_addError(
-        varTok,
-        "The old PHP 4 'var' keyword MUST NOT be used",
-        "#class-methods-and-properties"
-    );
-    res  = $this->_lexer->getPosition("public");
-}
-
-method_modifiers(res) ::= . {
-    $fakeToken  = $this->_lexer->getPosition("public");
-    $this->_addError(
-        $fakeToken,
-        "The method's visibility MUST be explicitely stated",
-        "#class-methods-and-properties"
-    );
-    res         = array($fakeToken);
-}
-method_modifiers(res) ::= non_empty_member_modifiers(mods). {
-    $newRes = mods;
-    $ppp    = array("PUBLIC", "PROTECTED", "PRIVATE");
-    foreach ($newRes as $mod) {
-        if (in_array($this->_normalizeIdentifier($mod->getValue()), $ppp)) {
-            res = $newRes;
-            return;
-        }
-    }
-
-    $newRes[] = $this->_lexer->getPosition("public");
-    res = $newRes;
-}
 
 non_empty_member_modifiers(res) ::= member_modifier(mod). {
     res = array(mod);
@@ -813,23 +857,23 @@ member_modifier(res) ::= T_FINAL(tok). {
 }
 
 class_variable_declaration(res) ::= class_variable_declaration(vars) T_COMMA T_VARIABLE(varName). {
-    $this->_validClassVarName(varName, FALSE);
+    $this->_validClassObjName(varName, FALSE);
     $newVars    = vars;
     $newVars[]  = varName;
     res = $newVars;
 }
 class_variable_declaration(res) ::= class_variable_declaration(vars) T_COMMA T_VARIABLE(varName) T_EQUAL static_scalar. {
-    $this->_validClassVarName(varName, FALSE);
+    $this->_validClassObjName(varName, FALSE);
     $newVars    = vars;
     $newVars[]  = varName;
     res = $newVars;
 }
 class_variable_declaration(res) ::= T_VARIABLE(varName). {
-    $this->_validClassVarName(varName, FALSE);
+    $this->_validClassObjName(varName, FALSE);
     res = array(varName);
 }
 class_variable_declaration(res) ::= T_VARIABLE(varName) T_EQUAL static_scalar. {
-    $this->_validClassVarName(varName, FALSE);
+    $this->_validClassObjName(varName, FALSE);
     res = array(varName);
 }
 
@@ -853,14 +897,14 @@ expr_without_variable ::= T_LIST T_PAR_OPEN assignment_list T_PAR_CLOSE T_EQUAL 
 expr_without_variable ::= variable T_EQUAL expr.
 expr_without_variable ::= variable T_EQUAL T_AMPERSAND variable.
 expr_without_variable ::= variable T_EQUAL T_AMPERSAND(newRef) T_NEW class_name_reference ctor_arguments(hasArgs). {
-    $this->_addError(
+    $this->addError(
         newRef,
         "Assigning the return value of new by reference is forbidden",
         "#class-constructor-calls" // @TODO
     );
 
     if (!hasArgs) {
-        $this->_addError(
+        $this->addError(
             $this->_lexer->getPosition(),
             "Always use parenthesis when calling a class constructor " .
             "even if it takes no argument",
@@ -870,7 +914,7 @@ expr_without_variable ::= variable T_EQUAL T_AMPERSAND(newRef) T_NEW class_name_
 }
 expr_without_variable ::= T_NEW class_name_reference ctor_arguments(hasArgs). {
     if (!hasArgs) {
-        $this->_addError(
+        $this->addError(
             $this->_lexer->getPosition(),
             "Always use parenthesis when calling a class constructor " .
             "even if it takes no argument",
@@ -1001,7 +1045,7 @@ static_array_pair_list ::= non_empty_static_array_pair_list(arr) possible_comma(
         return;
     }
 
-    $this->_addWarning(
+    $this->addWarning(
         $this->_lexer->getPosition(),
         "Always add a comma at the end of the last array element, " .
         "unless the the whole array fits on one line (eg. callbacks)",
@@ -1098,7 +1142,7 @@ array_pair_list ::= non_empty_array_pair_list(arr) possible_comma(hasComma). {
         return;
     }
 
-    $this->_addWarning(
+    $this->addWarning(
         $this->_lexer->getPosition(),
         "Always add a comma at the end of the last array element, " .
         "unless the the whole array fits on one line (eg. callbacks)",
@@ -1149,7 +1193,7 @@ encaps_var_offset ::= T_VARIABLE.
 internal_functions_in_yacc ::= T_ISSET T_PAR_OPEN isset_variables T_PAR_CLOSE.
 internal_functions_in_yacc ::= T_EMPTY T_PAR_OPEN variable T_PAR_CLOSE.
 internal_functions_in_yacc ::= T_INCLUDE(includeOp) expr. {
-    $this->_addError(
+    $this->addError(
         includeOp,
         "Use include_once/require_once instead of include/require",
         "#including-code"
@@ -1164,7 +1208,4 @@ isset_variables ::= variable.
 isset_variables ::= isset_variables T_COMMA variable.
 
 class_constant ::= fully_qualified_class_name T_PAAMAYIM_NEKUDOTAYIM T_STRING.
-
-whitespace ::= whitespace T_WHITESPACE.
-whitespace ::= .
 
